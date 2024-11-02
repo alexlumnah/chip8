@@ -4,6 +4,7 @@ CC = gcc
 # Compiler Flags:
 CFLAGS = -g -Wall -Wpedantic -Wextra -fsanitize=address,undefined,signed-integer-overflow
 LDFLAGS = -lncurses
+RAYFLAGS = lib/libraylib.a -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL
 
 SRC = $(wildcard src/*.c)
 OBJ = $(SRC:.c=.o)
@@ -17,7 +18,7 @@ all: main
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 main: $(OBJ)
-	$(CC) -o main $^ $(CFLAGS) $(LDFLAGS)
+	$(CC) -o main $^ $(CFLAGS) $(LDFLAGS) $(RAYFLAGS)
 
 clean:
 	rm main $(OBJ)

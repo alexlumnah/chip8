@@ -7,6 +7,10 @@
 #include "opcodes.h"
 #include "display.h"
 
+#define LOG(...) LOG_HELPER(__VA_ARGS__, "")
+#define LOG_HELPER(opc, str, ...) \
+     printf("%04d: 0x%04x - " str "%s\n", chip->pc - 2, opc, __VA_ARGS__)
+
 // Initialize Chip8 VM
 void init_chip8(Chip8* chip) {
 
@@ -48,6 +52,9 @@ void init_chip8(Chip8* chip) {
     chip->cycle_f = 700;
     chip->clocks = 0;
     chip->cycles = 0;
+    
+    // Default State
+    chip->state = STATE_HALTED;
 }
 
 // Load a rom from file
@@ -79,230 +86,198 @@ uint8_t cycle(Chip8* chip) {
     chip->pc = (chip->pc + 2) % 0x0ffe;
 
     // Decode opcode
+    uint8_t  xreg = (opc & 0x0f00) >> 8;    // X Register 
+    uint8_t  xval = chip->reg[xreg];        // Value in X Register
+    uint8_t  yreg = (opc & 0x00f0) >> 4;    // Y Register
+    uint8_t  yval = chip->reg[yreg];        // Value in Y Register
+    uint8_t  nibb = (opc & 0x000f);         // Last nibble
+    uint8_t  ival = (opc & 0x00ff);         // Immediate Value
+    uint16_t addr = (opc & 0x0fff);         // 12bit Memory Address
+
+    // Execute opcode
     switch ( (opc & 0xf000) >> 12) {
     case 0x0:
         if (opc == 0x00e0) {
+            LOG(opc, "cls");
             cls(chip);
-            printf("cls\n");
         } else if (opc == 0x00ee) {
+            LOG(opc, "ret");
             ret(chip);
-            printf("ret\n");
         } else {
-            printf("ERROR: INVALID OPCODE: %x\n",opc);
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
         }
         break;
-    case 0x1: {
-        uint16_t addr = opc & 0xfff;
+    case 0x1:
+        LOG(opc, "jp %d", addr);
         jp(chip, addr);
-        printf("jp to %d\n", addr);
         break;
-    }
-    case 0x2: {
-        uint16_t addr = opc & 0xfff;
+    case 0x2:
+        LOG(opc, "call %d", addr);
         call(chip, addr);
-    }
-    case 0x3: {
-        uint8_t reg = (opc & 0xf00) >> 8;
-        uint8_t val = (opc & 0xff);
-        se(chip, reg, val);
         break;
-    }
-    case 0x4: {
-        uint8_t reg = (opc & 0xf00) >> 8;
-        uint8_t val = (opc & 0xff);
-        sne(chip, reg, val);
+    case 0x3:
+        LOG(opc, "se [v%x]=%d, %d", xreg, xval, ival);
+        se(chip, xreg, ival);
         break;
-    }
-    case 0x5: {
+    case 0x4:
+        LOG(opc, "sne [v%x]=%d, %d", xreg, xval, ival);
+        sne(chip, xreg, ival);
+        break;
+    case 0x5:
         if ((opc & 0xf) != 0) {
-            printf("ERROR: INVALID OPCODE: %x\n",opc);
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
         }
-        uint8_t x = (opc & 0xf00) >> 8;
-        uint8_t y = (opc & 0x0f0) >> 4;
-        se(chip, x, chip->reg[y]);
+        LOG(opc, "se [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+        se(chip, xreg, yval);
         break;
-    }
-    case 0x6: {
-        uint8_t dst = (opc & 0xf00) >> 8;
-        uint8_t val = opc & 0xff;
-        ld(chip,dst,val);
-        printf("ld %d, %d\n", dst, val);
+    case 0x6:
+        LOG(opc, "ld [v%x], %d", xreg, ival);
+        ld(chip, xreg, ival);
         break;
-    }
-    case 0x7: {
-        uint8_t dst = (opc & 0xf00) >> 8;
-        uint8_t val = opc & 0xff;
-        addnc(chip,dst,val);
-        printf("addnc %d, %d\n", dst, val);
+    case 0x7:
+        LOG(opc, "addnc [v%x]=%d, %d", xreg, xval, ival);
+        addnc(chip, xreg, ival);
         break;
-    }
     case 0x8: {
-        uint8_t dst = (opc & 0xf00) >> 8;
-        uint8_t src = (opc & 0x0f0) >> 4;
-        uint8_t val = chip->reg[src];
         switch (opc & 0xf) {
-        case 0: {
-            ld(chip,dst,val);
+        case 0:
+            LOG(opc, "ld [v%x], [v%x]=%d", xreg, yreg, yval);
+            ld(chip, xreg, yval);
             break;
-        }
-        case 1: {
-            or(chip,dst,val);
+        case 1:
+            LOG(opc, "or [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            or(chip, xreg, yval);
             break;
-        }
-        case 2: {
-            and(chip,dst,val);
+        case 2:
+            LOG(opc, "and [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            and(chip, xreg, yval);
             break;
-        }
-        case 3: {
-            xor(chip,dst,val);
+        case 3:
+            LOG(opc, "xor [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            xor(chip, xreg, yval);
             break;
-        }
-        case 4: {
-            add(chip,dst,val);
+        case 4:
+            LOG(opc, "add [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            add(chip, xreg, yval);
             break;
-        }
-        case 5: {
-            sub(chip,dst,val);
+        case 5:
+            LOG(opc, "sub [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            sub(chip, xreg, yval);
             break;
-        }
-        case 6: {
-            shr(chip,dst,val);
+        case 6:
+            LOG(opc, "shr [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            shr(chip, xreg, yval);
             break;
-        }
-        case 7: {
-            subn(chip,dst,val);
+        case 7:
+            LOG(opc, "subn [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            subn(chip, xreg, yval);
             break;
-        }
-        case 0xe: {
-            shl(chip,dst,val);
+        case 0xe:
+            LOG(opc, "shl [v%x]=%d, [v%x]=%d", xreg, xval, yreg, yval);
+            shl(chip, xreg, yval);
             break;
-        }
-        default: {
-            printf("invalid opcode: %04x",opc);
+        default:
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
         }
-    }
         break;
     }
-    case 9: {
+    case 9:
         if ((opc & 0xf) != 0) {
-            printf("invalid opcode: %04x",opc);
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
-            break;
         }
-        uint8_t reg = (opc & 0xf00) >> 8;
-        uint8_t src = (opc & 0x0f0) >> 4;
-        uint8_t val = chip->reg[src];
-        sne(chip, reg, val);
-        printf("sne %d %d\n", reg, val);
+        LOG(opc, "sne [v%x]=%d, [v%x]=%d", xreg, xval, yreg, ival);
+        sne(chip, xreg, yval);
         break;
-    }
-    case 0xa: {
-        uint16_t addr = opc & 0xfff;
+    case 0xa:
+        LOG(opc, "ldi %d", addr);
         ldi(chip, addr);
-        printf("ldi %d\n", addr);
         break;
-    }
     case 0xb: {
-        uint16_t addr = opc & 0xfff;
         uint16_t delta = chip->reg[0];
+        LOG(opc, "jp %d + [v0]=%d = %d", addr, delta, addr + delta);
         jp(chip, addr + delta);
-        printf("jp to %d\n", addr + delta);
         break;
     }
-    case 0xc: {
-        uint8_t dst = (opc & 0xf00) >> 8;
-        uint8_t val = (opc & 0x0ff);
-        rnd(chip, dst, val);
-    }
-    case 0xd: {
-        uint8_t x = (opc & 0x0f00) >> 8;
-        uint8_t y = (opc & 0x00f0) >> 4;
-        uint8_t n = (opc & 0x000f);
-        drw(chip, x, y, n);
-        printf("drw %d, %d, %d\n",x,y,n);
+    case 0xc:
+        LOG(opc, "rnd [v%x], %d", xreg, ival);
+        rnd(chip, xreg, ival);
         break;
-    }
-    case 0xe: {
-        uint8_t x = (opc & 0x0f00) >> 8;
-        bool key_pressed = (chip->keypad & (1 << chip->reg[x])) >> chip->reg[x];
-        if ((opc & 0x00ff) != 0x9e && (opc & 0x00ff) != 0xa1) {
-            printf("invalid opcode: %04x",opc);
+    case 0xd:
+        LOG(opc, "drw [v%x]=%d, [v%x]=%d, %d",xreg,xval,yreg,yval,nibb);
+        drw(chip, xreg, yreg, nibb);
+        break;
+    case 0xe:
+        if (ival == 0x9e) {
+            LOG(opc, "skp [v%x]=%d", xreg, xval);
+            skp(chip, xval);
+        } else if (ival == 0xa1) {
+            LOG(opc, "sknp [v%x]=%d", xreg, xval);
+            sknp(chip, xval);
+        } else {
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
-        } else if ((opc & 0x00ff) == 0x9e && key_pressed) {
-            chip->pc += 2;
-        } else if ((opc & 0x00ff) == 0xa1 && !key_pressed) {
-            chip->pc += 2;
         }
         break;
-    }
     case 0xf: {
-        uint8_t x = (opc & 0x0f00) >> 8;
         switch (opc & 0xff) {
-        case 0x07: {
-            ld(chip, x, chip->delay);
+        case 0x07:
+            LOG(opc, "ld [v%x], [delay]=%d", xval, chip->delay);
+            ld(chip, xreg, chip->delay);
             break;
-        }
-        case 0x0a: {
+        case 0x0a:
             // Check for a key press
             chip->pc -= 2;
+            LOG(opc, "wait until keypress");
             for (uint8_t i = 0; i < 16; i++) {
-                bool key_pressed = (chip->keypad & (1 << i)) >> i;
-                if (key_pressed) {
-                    ld(chip, x, i);
+                bool keypress = (chip->keypad & (1 << i)) >> i;
+                if (keypress) {
+                    LOG(opc, "ld [v%x], [key]=%d", xreg, i);
+                    ld(chip, xreg, i);
                     chip->pc += 2;
                     break;
                 }
             }
             break;
-        }
-        case 0x15: {
-            chip->delay = chip->reg[x];
+        case 0x15:
+            LOG(opc, "ld [delay], [v%x]=%d", xreg, xval);
+            ldd(chip, xval);
             break;
-        }
-        case 0x18: {
-            chip->sound = chip->reg[x];
+        case 0x18:
+            LOG(opc, "ld [sound], [v%x]=%d", xreg, xval);
+            lds(chip, xval);
             break;
-        }
-        case 0x1e: {
-            chip->i += chip->reg[x];
+        case 0x1e:
+            LOG(opc, "add [i]=%d, [v%x]=%d", chip->i, xreg, xval);
+            addi(chip, xval);
             break;
-        }
-        case 0x29: {
-            chip->i = FONT_VECTOR + 5 * chip->reg[x];
+        case 0x29:
+            LOG(opc, "ld sprite [i], [v%x]=%x", xreg, xval);
+            ld_sprite(chip, xval);
             return 0;
-        }
-        case 0x33: {
-            uint8_t val = chip->reg[x];
-            chip->ram[chip->i] = val / 100;
-            chip->ram[chip->i + 1] = val % 100 / 10;
-            chip->ram[chip->i + 2] = val % 10;
+        case 0x33:
+            LOG(opc, "ld bcd [i], [v%x]=%d", xreg, xval);
+            ld_bcd(chip, xval);
             break;
-        }
-        case 0x55: {
-            for (uint8_t i = 0; i <= x; i++) {
-                chip->ram[chip->i + i] = chip->reg[i];
-            }
-            if (chip->quirk_memory) chip->i += x;
+        case 0x55:
+            LOG(opc, "str [i], [v0] - [v%x]", xreg);
+            str(chip, xreg);
             break;
-        }
-        case 0x65: {
-            for (uint8_t i = 0; i <= x; i++) {
-                chip->reg[i] = chip->ram[chip->i + i];
-            }
-            if (chip->quirk_memory) chip->i += x;
+        case 0x65:
+            LOG(opc, "ld [v0] - [v%x], [i]", xreg);
+            ldr(chip, xreg);
             break;
-        }
         default:
-            printf("ERROR: INVALID OPCODE: %x\n",opc);
+            LOG(opc, "UNDEFINED OPCODE");
             return 0;
         }
         break;
     }
     default:
-        printf("ERROR: INVALID OPCODE: %x\n",opc);
+        LOG(opc, "UNDEFINED OPCODE");
         return 0;
     }
 
@@ -310,27 +285,75 @@ uint8_t cycle(Chip8* chip) {
 
 }
 
-void run(Chip8* chip) {
+// Core execution loop
+void loop(Chip8* chip, ChipState state) {
 
     init_display();
 
     clock_t start = clock();
+    chip->state = state;
     while (display_is_open()) {
+
         float delta_t = (clock() - start) / (float)CLOCKS_PER_SEC;
-
         chip->keypad = get_keypad_inputs();
-        
-        if (chip->cycles <= delta_t * chip->cycle_f) {
-            cycle(chip);
-            chip->cycles++;
+
+        switch (chip->state) {
+        case STATE_RUNNING: {
+            if (chip->cycles <= delta_t * chip->cycle_f) {
+                cycle(chip);
+                chip->cycles++;
+            }
+
+            if (chip->clocks <= delta_t * chip->clock_f) {
+                send_clock(chip);
+                update_display(chip);
+                chip->clocks++;
+            }
+            break;
+        }
+        case STATE_STEPPING: {
+            // Update display and clock at 60fps
+            if (chip->clocks <= delta_t * chip->clock_f) {
+
+                // Step forward when space is pressed
+                if (is_space_pressed()) {
+                    cycle(chip);
+                    chip->cycles++;
+                }
+                send_clock(chip);
+                update_display(chip);
+                chip->clocks++;
+            }
+            break;
+        }
+        case STATE_HALTED:
+            // Update display at 60fps
+            if (chip->clocks <= delta_t * chip->clock_f) {
+                update_display(chip);
+            }
+            break;
         }
 
-        if (chip->clocks <= delta_t * chip->clock_f) {
-            send_clock(chip);
-            update_display(chip);
-            chip->clocks++;
+        // Each Frame, check for state changes from pressing p, s, r
+        if (is_p_pressed()) {
+            chip->state = STATE_HALTED;
         }
-
+        if (is_space_pressed()) {
+            if (chip->state != STATE_STEPPING) {
+                chip->cycles = 0;
+                chip->clocks = 0;
+                start = clock();
+            }
+            chip->state = STATE_STEPPING;
+        }
+        if (is_enter_pressed()) {
+            if (chip->state != STATE_RUNNING) {
+                chip->cycles = 0;
+                chip->clocks = 0;
+                start = clock();
+            }
+            chip->state = STATE_RUNNING;
+        }
     }
 
     end_display();
@@ -338,6 +361,17 @@ void run(Chip8* chip) {
 
 }
 
+// Run loop
+void run(Chip8* chip) {
+    loop(chip, STATE_RUNNING);
+}
+
+// Step through loop
+void step(Chip8* chip) {
+    loop(chip, STATE_STEPPING);
+}
+
+// Dump VM State
 void dump_state(Chip8* chip) {
 
     printf("VM = {\n");
@@ -364,6 +398,7 @@ void dump_state(Chip8* chip) {
     printf("}\n");
 }
 
+// Dump RAM Contents
 void dump_ram(Chip8* chip) {
 
     for (uint16_t j = 0; j < 0xff; j++) {

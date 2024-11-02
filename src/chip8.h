@@ -10,6 +10,12 @@
 #define RESET_VECTOR (0x200)
 #define FONT_VECTOR (0x50)
 
+typedef enum {
+    STATE_HALTED,
+    STATE_RUNNING,
+    STATE_STEPPING,
+} ChipState;
+
 typedef struct Chip8 {
 
     // Registers
@@ -28,18 +34,21 @@ typedef struct Chip8 {
     uint8_t vid[VID_WIDTH * VID_HEIGHT]; // Video memory
 
     // Quirks
-    bool quirk_vf_reset;
-    bool quirk_memory;
-    bool quirk_disp_wait;
-    bool quirk_clip;
-    bool quirk_shift;
-    bool quirk_jump;
+    bool quirk_vf_reset;    // Flag Reset Quirk
+    bool quirk_memory;      // Memory Quirk
+    bool quirk_disp_wait;   // Wait for display vsync quirk
+    bool quirk_clip;        // Clipping Quirk
+    bool quirk_shift;       // Shifting Quirk
+    bool quirk_jump;        // Jumping Quirk
 
     // Clocking
     float clock_f;          // Clock Frequency
     float cycle_f;          // Cycle Frequency
     long cycles;            // Number of cycles executed
     long clocks;            // Number of clock pulses sent
+
+    // State
+    ChipState state;        // Chip State
 
 } Chip8;
 
@@ -50,10 +59,8 @@ void dump_state(Chip8* chip);                   // Dump VM State
 void dump_ram(Chip8* chip);                     // Dump RAM
 void dump_display(Chip8* chip);                 // Draw Display in ASCII
 
-void set_keys(Chip8* chip, uint16_t keypad);    // Set keypad register
-uint8_t cycle(Chip8* chip);                     // Execute one cycle
-void send_clock(Chip8* chip);                   // Trigger clock signal
 void run(Chip8* chip);                          // Run VM indefinitely
+void step(Chip8* chip);                         // Step through cycles
 
 #endif  // CHIP8_H
 
