@@ -2,6 +2,8 @@
 #include "display.h"
 #include "chip8.h"
 
+#define FONT_PATH "lib/Courier New Bold.ttf"
+
 Font db_font;
 Font ram_font;
 
@@ -9,10 +11,8 @@ Font ram_font;
 void init_display(void) {
 
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "chip-8");
-    db_font = LoadFontEx("lib/Courier New Bold.ttf",
-                            DEBUG_TEXT_SIZE, 0, 250);
-    ram_font = LoadFontEx("lib/Courier New Bold.ttf",
-                            RAM_TEXT_SIZE, 0, 250);
+    db_font = LoadFontEx(FONT_PATH,  DEBUG_TEXT_SIZE, 0, 250);
+    ram_font = LoadFontEx(FONT_PATH, RAM_TEXT_SIZE,   0, 250);
 
 }
 
