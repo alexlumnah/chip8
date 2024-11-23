@@ -11,22 +11,9 @@ int main(int argc, char** argv) {
     if (argc > 1) {
         load_rom(chip, argv[1]);
     } else {
-        //load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-test-suite/bin/1-chip8-logo.ch8");
-        //load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-test-suite/bin/2-ibm-logo.ch8");
-        //load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-test-suite/bin/3-corax+.ch8");
-        //load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-test-suite/bin/4-flags.ch8");
-        //load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-test-suite/bin/5-quirks.ch8");
-        load_rom(chip, "/Users/lumnah/Documents/c/chip-8/chip8-roms/games/Tetris [Fran Dachille, 1991].ch8");
+        printf("Usage: chip8 <path_to_rom>");
     }
 
     run(chip);
-
-    //for (int i = 0; i < 100; i++) {
-    //    printf("%d: ",i);
-    //    cycle(chip);
-    //    dump_state(chip);
-    //    dump_display(chip);
-    //    //getchar();
-    //}
 
 }

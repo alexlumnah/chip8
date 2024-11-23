@@ -3,7 +3,6 @@ CC = gcc
 
 # Compiler Flags:
 CFLAGS = -g -Wall -Wpedantic -Wextra -fsanitize=address,undefined,signed-integer-overflow
-LDFLAGS = -lncurses
 RAYFLAGS = lib/libraylib.a -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL
 
 SRC = $(wildcard src/*.c)
@@ -18,10 +17,10 @@ all: main
 	$(CC) -o $@ -c $< $(CFLAGS)
 
 main: $(OBJ)
-	$(CC) -o main $^ $(CFLAGS) $(LDFLAGS) $(RAYFLAGS)
+	$(CC) -o chip8 $^ $(CFLAGS) $(LDFLAGS) $(RAYFLAGS)
 
 clean:
-	rm main $(OBJ)
+	rm chip8 $(OBJ)
 
 tidy:
 	clang-tidy src/* --
